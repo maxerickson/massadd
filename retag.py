@@ -99,6 +99,19 @@ def find_state(address):
         state=None
     return state,rest
 
+def find_pobox(address):
+    po=re.search(" ?P.{0,2}O.{0,2}box (\w*)",address, re.I)
+    if po is not None:
+        start=po.start()
+        end=po.end()
+        rest=address[:start]+address[end:]
+        idx=0
+        while rest[idx] in " -.,":
+            idx+=1
+        return po.group(1),rest[idx:]
+    else:
+        return None,address
+
 def parse_full(address):
     if address[0].isnumeric():
         hnumber, street=address.split(" ",1)
@@ -111,6 +124,7 @@ dump2=open("dump2.txt", "w")
 
 def parse_ma(address):
     address=address.strip()
+    pobox,address=find_pobox(address)
     hnumber, address=find_housenumber(address)
     zip, address=find_zipcode(address)
     state,address=find_state(address)
@@ -122,8 +136,8 @@ def parse_ma(address):
             city=None
         if address.count(',')==1:
             street, city=address.split(",")
-        else:
-            print(address)
+        #~ else:
+            #~ print(address)
         # store None for string.format
         items["addr:housenumber"]=hnumber
         if street is not None:
@@ -131,11 +145,12 @@ def parse_ma(address):
         items["addr:street"]=expand_street(street)
         if city is not None:
             city=city.strip()
+            if city.isupper():
+                city=city.title()
         if city=="Manchester-by-the-S":
             city="Manchester by the Sea"
-        if city.isupper():
-            city=city.title()
         items["addr:city"]=city
+        items["contact:pobox"]=pobox
         items["addr:state"]=state
         items["addr:postcode"]=zip
     except:
@@ -151,11 +166,11 @@ def alter_osm(infile, outfile):
     osm.set('generator', 'retag.py')
     count=0
     countall=0
-    tmpl="{a[addr:housenumber]}\t{a[addr:street]}\t{a[addr:city]}\t{a[addr:state]}\t{a[addr:postcode]}\t{}\t{}\t{}\n"
+    tmpl="{a[addr:housenumber]}\t{a[addr:street]}\t{a[addr:city]}\t{a[addr:state]}\t{a[addr:postcode]}\t{a[contact:pobox]}\t{}\t{}\t{}\n"
     dump=open("dump.txt","w")
     cities=set()
     with open("addresses.txt", "w") as log:
-        log.write("housenumber\tstreet\tcity\tstate\tpostcode\taddress\ttype\tid\n")
+        log.write("housenumber\tstreet\tcity\tstate\tpostcode\tpobox\taddress\ttype\tid\n")
         for child in osm:
             countall+=1
             osmid=child.get('id')
@@ -188,9 +203,9 @@ def alter_osm(infile, outfile):
                     count+=1
             except: # addresses not correctly parsed
                 #~ print(count)
-                log.write("ERROR\t\t\t\t\t"+address+"\t"+child.tag+"\t"+osmid+"\n")
+                log.write("ERROR\t\t\t\t\t\t"+address+"\t"+child.tag+"\t"+osmid+"\n")
                 print(child.tag,osmid, address)
-                #~ raise
+                raise
         tree.write(outfile)
         print(count,"items parsed out of",countall)
         #~ print(sorted(cities))
