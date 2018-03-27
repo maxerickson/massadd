@@ -185,6 +185,7 @@ def alter_osm(infile, outfile):
                     items=parse_ma(address)
                     log.write(tmpl.format(tsvquote(address),child.tag,osmid,a={k:tsvquote(v) for k,v in items.items()}))
                     for k,v in items.items():
+                        collided=False
                         if v is not None:
                             if k=="addr:city":
                                 cities.add(v)
@@ -195,11 +196,13 @@ def alter_osm(infile, outfile):
                                     continue
                                 else:
                                     print("COLLISION",v,exists[0].get("v"),child.tag,osmid)
+                                    collided=True
                                     
                             e=ElementTree.Element("tag",attrib={"k":k,"v":v})
                             child.append(e)
                     child.set('action', 'modify')
-                    child.remove(t[0])
+                    if not collided:
+                        child.remove(t[0])
                     count+=1
             except: # addresses not correctly parsed
                 #~ print(count)
