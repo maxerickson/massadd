@@ -10,34 +10,45 @@ def tsvquote(text):
         return text
 
 prefixes={
+    "E":"East",
     "E.":"East",
     "N":"North",
     "N.":"North",
+    "No":"North",
     "No.":"North",
     "S":"South",
     "S.":"South",
     "So.":"South",
     "Mt":"Mount",
     "Mt.":"Mount",
+    "W":"West",
     "W.":"West",
+    "Fr.":"Father",
+    "Rt":"Route",
     "Rt.":"Route",
+    "Rte":"Route",
     "Sgt":"Sergeant",
     "Sgt.":"Sergeant",
     "St":"Saint",
     "Mass.":"Massachusetts"
 }
 
-suffixes={"Ave":"Avenue",
+suffixes={
+    "Av":"Avenue",
+    "Ave":"Avenue",
     "Blvd":"Boulevard",
+    "Ct":"Court",
     "Dr":"Drive",
     "Hwy":"Highway",
     "Ln":"Lane",
     "Pk":"Park",
+    "Pl":"Place",
     "Pkwy":"Parkway",
     "Rd":"Road",
     "Sq":"Square",
     "St":"Street",
-    "St. N":"Street North"}
+    "St. N":"Street North",
+    "Ter":"Terrace"}
 
 def expand_street(street):
     # simple normalizations
@@ -56,10 +67,12 @@ def expand_street(street):
     return street
 
 def find_housenumber(address):
+    if address.startswith("One "):
+        address="1 "+address[3:]
     if address[0].isnumeric():
         idx=0
         hnumber=''
-        while address[idx].isnumeric() or address[idx]=="-":
+        while address[idx]!=" ":
             hnumber+=address[idx]
             idx+=1
         while address[idx] in " .,":
@@ -87,13 +100,19 @@ def find_zipcode(address):
         zip=None
     return zip,rest
 
+states=set("""AL AK AZ AR CA CO CT DE DC FL GA HA ID IL IN
+IA KA KY LA ME MD MA MI MN MS MO MT NE NV NH
+NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT
+VT WA WV WI WY AS GU PR VI""".split())
+
 def find_state(address):
-    if address.endswith("MA"):
+    tmp,state=address.rsplit(" ",1)
+    if state.upper() in states:
         idx=-3
         while address[idx] in " .,":
             idx-=1
         rest=address[:idx+1]
-        state="MA"
+        state=state.upper()
     else:
         rest=address
         state=None
@@ -104,11 +123,11 @@ def find_pobox(address):
     if po is not None:
         start=po.start()
         end=po.end()
-        rest=address[:start]+address[end:]
+        rest=address[end:]
         idx=0
-        while rest[idx] in " -.,":
+        while rest[idx] in " -.,()":
             idx+=1
-        return po.group(1),rest[idx:]
+        return po.group(1),address[:start]+" "+rest[idx:]
     else:
         return None,address
 
@@ -130,10 +149,10 @@ def parse_ma(address):
     state,address=find_state(address)
     dump2.write(address+"\n")
     items=dict()
+    street=city=None
     try:
         if address.count(',')==0:
             street=address
-            city=None
         if address.count(',')==1:
             street, city=address.split(",")
         #~ else:
@@ -142,7 +161,8 @@ def parse_ma(address):
         items["addr:housenumber"]=hnumber
         if street is not None:
             street=street.strip()
-        items["addr:street"]=expand_street(street)
+            street=expand_street(street)
+        items["addr:street"]=street
         if city is not None:
             city=city.strip()
             if city.isupper():
@@ -208,7 +228,7 @@ def alter_osm(infile, outfile):
                 #~ print(count)
                 log.write("ERROR\t\t\t\t\t\t"+address+"\t"+child.tag+"\t"+osmid+"\n")
                 print(child.tag,osmid, address)
-                raise
+                #~ raise
         tree.write(outfile)
         print(count,"items parsed out of",countall)
         #~ print(sorted(cities))
