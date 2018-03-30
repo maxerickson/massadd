@@ -119,15 +119,18 @@ def find_state(address):
     return state,rest
 
 def find_pobox(address):
-    po=re.search(" ?P.{0,2}O.{0,2}box (\w*)",address, re.I)
+    pattern=re.compile("[ ,]? ?P.{0,2}O.{0,2}box (\w*),?", re.I)
+    po=pattern.search(address)
     if po is not None:
-        start=po.start()
-        end=po.end()
-        rest=address[end:]
-        idx=0
-        while rest[idx] in " -.,()":
-            idx+=1
-        return po.group(1),address[:start]+" "+rest[idx:]
+        rest=pattern.sub(",",address)
+        #~ start=po.start()
+        #~ end=po.end()
+        #~ rest=address[end:]
+        #~ idx=0
+        #~ while rest[idx] in " -.,()":
+            #~ idx+=1
+        #~ return po.group(1),address[:start]+" "+rest[idx:]
+        return po.group(1),rest
     else:
         return None,address
 
