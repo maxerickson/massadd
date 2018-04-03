@@ -1,0 +1,4 @@
+#! /bin/bash
+payload="data=[out:xml][timeout:100];area[admin_level=4][name='New York']->.searchArea;(node['address'](area.searchArea);way['address'](area.searchArea);relation['address'](area.searchArea););(._;>;);out meta;"
+echo $payload
+curl -o nyadd.osm -g http://overpass-api.de/api/interpreter --data-urlencode "$payload"
